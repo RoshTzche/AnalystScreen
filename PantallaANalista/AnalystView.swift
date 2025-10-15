@@ -9,28 +9,33 @@ import SwiftUI
 
 struct AnalystView: View {
     @StateObject private var viewModel = AnalystViewModel()
+    // State para el texto que el usuario está escribiendo
+    @State private var userInput: String = ""
 
     var body: some View {
         VStack(spacing: 0) {
             header
             Divider()
             chatList
+            Divider()
+            inputBar // Añadimos la barra de entrada aquí
         }
-        .background(.background)
+        .background(AppColors.background) // Usamos un color semántico centralizado
         .task {
-            await viewModel.sendGreeting()
+            await viewModel.startAnalysisSession()
         }
         .navigationBarHidden(true)
+        .tint(AppColors.accent) // Configura el tint global dentro de esta vista
     }
 
     private var header: some View {
         HStack(spacing: 12) {
             ZStack {
                 Circle()
-                    .fill(Color.accentColor.opacity(0.15))
+                    .fill(AppColors.accent.opacity(0.15))
                     .frame(width: 40, height: 40)
                 Image(systemName: "chart.xyaxis.line")
-                    .foregroundStyle(.accent)
+                    .foregroundStyle(AppColors.accent)
             }
             VStack(alignment: .leading, spacing: 2) {
                 Text("Analista")
@@ -45,7 +50,7 @@ struct AnalystView: View {
         .padding(.vertical, 12)
         .background(.ultraThinMaterial)
     }
-
+    
     private var chatList: some View {
         ScrollViewReader { proxy in
             ScrollView {
@@ -79,7 +84,37 @@ struct AnalystView: View {
             }
         }
     }
+
+    // MARK: - Input Bar
+    private var inputBar: some View {
+        HStack(spacing: 12) {
+            TextField("Pregúntale al analista...", text: $userInput, axis: .vertical)
+                .textFieldStyle(.plain)
+                .lineLimit(1...5)
+
+            Button(action: sendMessage) {
+                Image(systemName: "arrow.up.circle.fill")
+                    .font(.title)
+                    .foregroundColor(userInput.isEmpty ? .secondary : AppColors.accent)
+            }
+            .disabled(userInput.isEmpty)
+        }
+        .padding(.horizontal)
+        .padding(.vertical, 8)
+        .background(.ultraThinMaterial)
+    }
+    
+    // Función para manejar el envío de mensajes
+    private func sendMessage() {
+        let text = userInput.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return }
+        userInput = ""
+        Task {
+            await viewModel.sendMessage(text: text)
+        }
+    }
 }
+
 
 struct ChatBubble: View {
     let message: Message
@@ -89,7 +124,7 @@ struct ChatBubble: View {
             if message.role == .assistant {
                 bubble
                 Spacer(minLength: 40)
-            } else {
+            } else if message.role == .user { // Condición para el usuario
                 Spacer(minLength: 40)
                 bubble
             }
@@ -109,10 +144,10 @@ struct ChatBubble: View {
         .padding(12)
         .background(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(.ultraThinMaterial)
+                .fill(message.role == .user ? AppColors.bubbleUser : AppColors.bubbleAssistant)
         )
     }
-
+    
     private func formattedDate(_ date: Date) -> String {
         let formatter = DateFormatter()
         formatter.locale = .autoupdatingCurrent

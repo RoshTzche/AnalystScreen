@@ -10,6 +10,7 @@ import Foundation
 enum MessageRole: String, Codable {
     case assistant
     case system
+    case user
 }
 
 struct Message: Identifiable, Hashable, Codable {
