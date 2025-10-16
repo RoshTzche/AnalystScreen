@@ -8,13 +8,12 @@
 import Foundation
 import GoogleGenerativeAI
 
-// El protocolo no cambia.
 protocol LLMService {
     func generateResponse(prompt: String) async throws -> String
 }
 
 
-// MARK: - Gemini LLM Service (Implementación Real)
+// MARK: - Gemini LLM Service
 
 final class GeminiLLMService: LLMService {
     private var model: GenerativeModel
@@ -34,7 +33,6 @@ final class GeminiLLMService: LLMService {
             
             return text
         } catch {
-            // Si hay un error, lo imprimimos para depuración y lo relanzamos.
             print("Error al generar contenido de Gemini: \(error.localizedDescription)")
             throw error
         }
@@ -42,17 +40,22 @@ final class GeminiLLMService: LLMService {
 }
 
 
-// MARK: - Stub LLM Service (Para Pruebas y Previews)
-
-struct StubLLMService: LLMService {
-    func generateResponse(prompt: String) async throws -> String {
-        try await Task.sleep(nanoseconds: 800_000_000) // 0.8s
-        
-        if prompt.contains("bienvenida") {
-            return "¡Hola! Soy tu analista virtual. Estoy listo para compartir insights del partido."
-        } else {
-            return "Esta es una respuesta simulada para tu pregunta: '\(prompt.prefix(50))...'"
-        }
-    }
+enum MessageRole: String, Codable {
+    case assistant
+    case system
+    case user
 }
 
+struct Message: Identifiable, Hashable, Codable {
+    let id: UUID
+    let role: MessageRole
+    let text: String
+    let timestamp: Date
+
+    init(id: UUID = UUID(), role: MessageRole, text: String, timestamp: Date = Date()) {
+        self.id = id
+        self.role = role
+        self.text = text
+        self.timestamp = timestamp
+    }
+}
