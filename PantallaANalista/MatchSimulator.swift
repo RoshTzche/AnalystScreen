@@ -1,10 +1,3 @@
-//
-//  MatchSimulator.swift
-//  PantallaANalista
-//
-//  Created by Rosh on 16/10/25.
-//
-
 import Foundation
 import Combine
 

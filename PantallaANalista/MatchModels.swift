@@ -17,6 +17,15 @@ struct Team: Identifiable, Hashable {
     let formation: String // Ej: "4-3-3", "4-4-2"
     let players: [Player]
     let logoColor: Color // Color primario para la UI
+
+    // Conformidad manual para Hashable y Equatable debido a `Color`.
+    static func == (lhs: Team, rhs: Team) -> Bool {
+        lhs.id == rhs.id
+    }
+
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+    }
 }
 
 /// Contiene el conjunto de estadísticas cuantificables de un equipo en un momento dado.
@@ -38,7 +47,7 @@ struct LiveMatchData {
     var homeStats: MatchStats
     var awayStats: MatchStats
     var matchTime: Int // Minuto actual del partido
-    
+
     /// Proporciona un estado inicial por defecto para las Previews y el arranque.
     static func placeholder() -> LiveMatchData {
         LiveMatchData(
