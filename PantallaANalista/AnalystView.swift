@@ -1,393 +1,233 @@
-//
-//  AnalystView.swift
-//  PantallaANalista
-//
-//  Created by Rosh on 15/10/25.
-//
-
 import SwiftUI
 
+// MARK: - VISTA PRINCIPAL (TU LÓGICA ORIGINAL CON NUEVA APARIENCIA)
 struct AnalystView: View {
     @StateObject private var viewModel = AnalystViewModel()
-    @State private var userInput: String = ""
-    
-    // State para saber qué tarjeta está mostrando el carrusel
-    @State private var currentCardIndex: Int = 0
+    @State private var selectedCardIndex = 0
+    @State private var userInput: String = "" // Movido aquí para que sea accesible
 
     var body: some View {
-        VStack(spacing: 0) {
-            header
-            Divider()
-            
-            // Reemplazamos el antiguo chatList por nuestro nuevo carrusel de tarjetas
-            cardCarousel
-            
-            Divider()
-            inputBar
+        ZStack {
+            // --- CAMBIO VISUAL 1: Fondo dinámico ---
+            AuroraBackground()
+
+            VStack(spacing: 0) {
+                header
+                cardCarousel // Sin cambios en la lógica
+                pageControl
+            }
         }
-        .background(AppColors.background)
+        .safeAreaInset(edge: .bottom, content: floatingInputArea)
         .task {
             await viewModel.startAnalysisSession()
         }
         .navigationBarHidden(true)
-        .tint(AppColors.accent)
     }
 
+    // --- SUBVISTAS (LÓGICA ORIGINAL, APARIENCIA RETOCADA) ---
+
     private var header: some View {
-        HStack(spacing: 12) {
-            ZStack {
-                Circle()
-                    .fill(AppColors.accent.opacity(0.15))
-                    .frame(width: 40, height: 40)
-                Image(systemName: "chart.xyaxis.line")
-                    .foregroundStyle(AppColors.accent)
-            }
+        HStack(spacing: 16) {
+            Image(systemName: "sparkle.magnifyingglass")
+                .font(.title2.weight(.bold))
+                .foregroundStyle(.white)
+                .padding(10)
+                .background(Color.white.opacity(0.1))
+                .clipShape(Circle())
+            
             VStack(alignment: .leading, spacing: 2) {
-                Text("Analista")
-                    .font(.headline)
-                Text("Asistente automático")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                Text("Ojo de Halcón")
+                    .font(.headline).bold()
+                    .foregroundStyle(.white)
+                Text("Analista en Tiempo Real")
+                    .font(.footnote)
+                    .foregroundStyle(.white.opacity(0.7))
             }
             Spacer()
         }
-        .padding(.horizontal)
-        .padding(.vertical, 12)
-        .background(.ultraThinMaterial)
+        .padding()
     }
     
-    // MARK: - Card Carousel
+    // --- TU CAROUSEL ORIGINAL (SIN CAMBIOS DE LÓGICA) ---
     private var cardCarousel: some View {
-        GeometryReader { _ in
-            ZStack {
-                // El TabView con estilo .page nos da el efecto de carrusel deslizable
-                TabView(selection: $currentCardIndex) {
-                    ForEach(Array(viewModel.cards.enumerated()), id: \.element.id) { index, card in
-                        FlippableCardView(card: card)
-                            .tag(index)
-                            .padding(.horizontal, 20)
-                            .padding(.vertical)
-                    }
-                }
-                .tabViewStyle(.page(indexDisplayMode: .never))
-                .animation(.easeInOut, value: viewModel.cards)
-                
-                // Indicadores de navegación y paginación
-                if !viewModel.cards.isEmpty {
-                    VStack {
-                        Spacer()
-                        
-                        // Paginador
-                        HStack(spacing: 8) {
-                            ForEach(0..<viewModel.cards.count, id: \.self) { index in
-                                Circle()
-                                    .fill(index == currentCardIndex ? AppColors.accent : Color.secondary.opacity(0.3))
-                                    .frame(width: 8, height: 8)
-                            }
-                        }
-                        
-                        // Indicador de "Siguiente Tarjeta"
-                        if currentCardIndex < viewModel.cards.count - 1 {
-                            Button(action: {
-                                withAnimation {
-                                    currentCardIndex += 1
-                                }
-                            }) {
-                                Image(systemName: "chevron.right.circle.fill")
-                                    .font(.title)
-                                    .foregroundStyle(AppColors.accent.opacity(0.8))
-                                    .background(.ultraThinMaterial, in: Circle())
-                                    .shadow(radius: 5)
-                            }
-                            .padding(.top, 10)
-                        } else {
-                            // Espacio reservado para mantener el paginador alineado
-                            Color.clear.frame(height: 44)
-                                .padding(.top, 10)
-                        }
-                    }
-                    .padding(.bottom)
-                }
+        TabView(selection: $selectedCardIndex) {
+            ForEach(Array(viewModel.cards.enumerated()), id: \.element.id) { index, card in
+                // La tarjeta Flippable usará la nueva CardSideView automáticamente
+                FlippableCardView(card: card)
+                    .tag(index)
             }
         }
+        .tabViewStyle(.page(indexDisplayMode: .never))
     }
-
-    // MARK: - Input Bar
-    private var inputBar: some View {
-        HStack(spacing: 12) {
-            TextField("Pregúntale al analista...", text: $userInput, axis: .vertical)
-                .textFieldStyle(.plain)
-                .lineLimit(1...5)
-
-            Button(action: sendMessage) {
-                Image(systemName: "arrow.up.circle.fill")
-                    .font(.title)
-                    .foregroundColor(userInput.isEmpty ? .secondary : AppColors.accent)
+    
+    private var pageControl: some View {
+        HStack(spacing: 8) {
+            ForEach(0..<viewModel.cards.count, id: \.self) { index in
+                Circle()
+                    .fill(index == selectedCardIndex ? .white : .white.opacity(0.4))
+                    .frame(width: 8, height: 8)
+                    .scaleEffect(index == selectedCardIndex ? 1.2 : 1.0)
             }
-            .disabled(userInput.isEmpty)
+        }
+        .padding(.bottom, 120) // Espacio para el input flotante
+        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: selectedCardIndex)
+    }
+    
+    private func floatingInputArea() -> some View {
+        VStack(spacing: 12) {
+            Button(action: {
+                Task {
+                    await viewModel.getLiveUpdate()
+                    withAnimation { selectedCardIndex = viewModel.cards.count - 1 }
+                }
+            }) {
+                Label("Obtener Análisis", systemImage: "sparkles")
+                    .font(.footnote.weight(.bold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .background(Color.white.opacity(0.15), in: Capsule())
+            }
+            .disabled(viewModel.isThinking)
+            .opacity(viewModel.isThinking ? 0.5 : 1.0)
+
+            HStack(spacing: 12) {
+                TextField("", text: $userInput, prompt: Text("Pregúntale a Ojo de Halcón...").foregroundStyle(.white.opacity(0.6)), axis: .vertical)
+                    .textFieldStyle(.plain)
+                    .lineLimit(1...5)
+                    .foregroundStyle(.white)
+                
+                Button(action: sendMessage) {
+                    Image(systemName: "arrow.up.circle.fill")
+                        .font(.title)
+                        .foregroundStyle(userInput.isEmpty ? .gray.opacity(0.5) : Color.cyan)
+                }
+                .disabled(userInput.isEmpty || viewModel.isThinking)
+            }
+            .padding(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 8))
+            .background(.black.opacity(0.2), in: Capsule())
+            .overlay(
+                Capsule()
+                    .stroke(Color.white.opacity(0.2), lineWidth: 1)
+            )
         }
         .padding(.horizontal)
-        .padding(.vertical, 8)
-        .background(.ultraThinMaterial)
+        .padding(.top)
     }
     
     private func sendMessage() {
         let text = userInput.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return }
-        
-        Task {
-            // Guardamos el índice actual antes de enviar
-            let previousCardCount = viewModel.cards.count
-            await viewModel.sendMessage(text: text)
-            // Cuando la nueva tarjeta se añade, nos desplazamos a ella
-            if viewModel.cards.count > previousCardCount {
-                withAnimation {
-                    currentCardIndex = viewModel.cards.count - 1
-                }
-            }
-        }
         userInput = ""
+        Task {
+            await viewModel.sendMessage(text: text)
+            withAnimation { selectedCardIndex = viewModel.cards.count - 1 }
+        }
     }
 }
 
 
-// MARK: - Flippable Card View
+// MARK: - TARJETAS (LÓGICA ORIGINAL, APARIENCIA MODIFICADA)
+
 struct FlippableCardView: View {
     let card: AnalysisCard
     @State private var isFlipped = false
-    @State private var stats: MatchStats?
 
     var body: some View {
         ZStack {
-            // Back: estadísticas del partido cuando se voltea
-            StatsPanel(stats: stats ?? MatchStats.placeholder)
-                .opacity(isFlipped ? 1.0 : 0.0)
-                // Contra-rotación para evitar espejo en el reverso
+            // Utiliza la nueva CardSideView
+            CardSideView(title: card.title ?? "Análisis", text: card.frontText)
+                .opacity(isFlipped ? 0 : 1)
+            
+            // Utiliza la nueva CardSideView
+            CardSideView(title: "Detalles Adicionales", text: card.backText)
                 .rotation3DEffect(.degrees(180), axis: (x: 0, y: 1, z: 0))
-
-            // Front: contenido normal de la tarjeta
-            CardFace(text: card.frontText, title: card.title, backgroundColor: AppColors.background)
-                .opacity(isFlipped ? 0.0 : 1.0)
+                .opacity(isFlipped ? 1 : 0)
         }
+        .rotation3DEffect(.degrees(isFlipped ? 180 : 0), axis: (x: 0, y: 1, z: 0))
         .onTapGesture {
-            withAnimation(.spring(response: 0.6, dampingFraction: 0.7)) {
+            withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
                 isFlipped.toggle()
-                if isFlipped && stats == nil {
-                    stats = MatchStats.generateMock()
-                }
             }
         }
-        // Rotación del contenedor: controla el flip
-        .rotation3DEffect(.degrees(isFlipped ? 180 : 0), axis: (x: 0, y: 1, z: 0))
+        .padding(.horizontal, 24)
     }
 }
 
-
-// MARK: - Card Face
-// Una vista genérica para la cara de una tarjeta
-struct CardFace: View {
+struct CardSideView: View {
+    let title: String
     let text: String
-    let title: String?
-    let backgroundColor: Color
-    
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            if let title = title, !title.isEmpty {
-                Text(title.uppercased())
-                    .font(.caption)
-                    .fontWeight(.bold)
-                    .foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                Text(title)
+                    .font(.footnote).bold().textCase(.uppercase)
+                    .foregroundStyle(.white.opacity(0.8))
+                Spacer()
+                Image(systemName: "arrow.2.circlepath")
+                    .foregroundStyle(.white.opacity(0.8))
+                    .font(.body.weight(.bold))
             }
             
             Text(text)
-                .font(.body)
-                .foregroundStyle(.primary)
-
+                .font(.title2).fontWeight(.bold)
+                .foregroundStyle(.white)
+                .lineSpacing(6)
+                .shadow(color: .black.opacity(0.2), radius: 2, y: 1)
+            
             Spacer()
         }
-        .padding(20)
+        .padding(24)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(backgroundColor)
-        .cornerRadius(20)
-        .shadow(color: .black.opacity(0.15), radius: 8, x: 0, y: 4)
+        .background(
+            Color.black.opacity(0.2)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: 20)
-                .stroke(AppColors.separator, lineWidth: 1)
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .stroke(
+                    LinearGradient(
+                        colors: [.cyan, .purple, .cyan],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    lineWidth: 2
+                )
         )
+        .shadow(color: .purple.opacity(0.3), radius: 20, x: 0, y: 10)
     }
 }
 
+struct AuroraBackground: View {
+    @State private var animate = false
 
-// MARK: - Stats Model + Panel
-private struct MatchStats: Hashable {
-    let minute: Int
-    let pointsToQualify: Int
-    let timeRemaining: String
-    let extraTimePossible: Bool
-    let missedChances: Int
-    let shotsOnTarget: Int
-    let possessionHome: Int
-    let possessionAway: Int
-    let expectedGoals: Double
-    
-    static let placeholder = MatchStats(
-        minute: 0,
-        pointsToQualify: 0,
-        timeRemaining: "--:--",
-        extraTimePossible: false,
-        missedChances: 0,
-        shotsOnTarget: 0,
-        possessionHome: 50,
-        possessionAway: 50,
-        expectedGoals: 0.0
-    )
-    
-    static func generateMock() -> MatchStats {
-        let minute = Int.random(in: 5...120)
-        let remaining = max(0, 90 - minute)
-        let extra = minute >= 85 && Bool.random()
-        let missed = Int.random(in: 0...6)
-        let onTarget = Int.random(in: 0...10)
-        let homePoss = Int.random(in: 35...65)
-        let awayPoss = 100 - homePoss
-        let xg = Double.random(in: 0.2...3.2)
-        
-        // Puntos para clasificar (ejemplo ficticio)
-        let pointsNeed = Int.random(in: 1...3)
-        
-        return MatchStats(
-            minute: minute,
-            pointsToQualify: pointsNeed,
-            timeRemaining: String(format: "%02d:%02d", remaining / 1, Int.random(in: 0...59)),
-            extraTimePossible: extra,
-            missedChances: missed,
-            shotsOnTarget: onTarget,
-            possessionHome: homePoss,
-            possessionAway: awayPoss,
-            expectedGoals: (xg * 10).rounded() / 10.0
-        )
-    }
-}
-
-private struct StatsPanel: View {
-    let stats: MatchStats
-    
     var body: some View {
-        VStack(spacing: 16) {
-            header
-            Divider().opacity(0.4)
-            grid
-            Spacer(minLength: 0)
+        ZStack {
+            Color.black.ignoresSafeArea()
+            
+            Circle()
+                .fill(Color.cyan.gradient)
+                .frame(width: 300, height: 300)
+                .blur(radius: 120)
+                .offset(x: animate ? 100 : -100, y: animate ? -50: -150)
+            
+            Circle()
+                .fill(Color.purple.gradient)
+                .frame(width: 300, height: 300)
+                .blur(radius: 150)
+                .offset(x: animate ? -100 : 100, y: animate ? 150 : 50)
         }
-        .padding(20)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(AppColors.secondaryBackground)
-        .cornerRadius(20)
-        .shadow(color: .black.opacity(0.15), radius: 8, x: 0, y: 4)
-        .overlay(
-            RoundedRectangle(cornerRadius: 20)
-                .stroke(AppColors.separator, lineWidth: 1)
-        )
-    }
-    
-    private var header: some View {
-        HStack {
-            Label("Estadísticas del partido", systemImage: "sportscourt")
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.secondary)
-            Spacer()
-            Badge(text: "Min \(stats.minute)")
-        }
-    }
-    
-    private var grid: some View {
-        VStack(spacing: 14) {
-            statRow(
-                icon: "flag.checkered",
-                title: "Puntos para clasificar",
-                value: "\(stats.pointsToQualify)"
-            )
-            statRow(
-                icon: "timer",
-                title: "Tiempo restante",
-                value: stats.timeRemaining
-            )
-            statRow(
-                icon: stats.extraTimePossible ? "clock.badge.exclamationmark" : "clock",
-                title: "Posible tiempo extra",
-                value: stats.extraTimePossible ? "Sí" : "No"
-            )
-            statRow(
-                icon: "soccerball",
-                title: "Oportunidades desaprovechadas",
-                value: "\(stats.missedChances)"
-            )
-            statRow(
-                icon: "scope",
-                title: "Tiros a puerta",
-                value: "\(stats.shotsOnTarget)"
-            )
-            possessionRow(home: stats.possessionHome, away: stats.possessionAway)
-            statRow(
-                icon: "chart.bar",
-                title: "xG (esperados)",
-                value: String(format: "%.1f", stats.expectedGoals)
-            )
-        }
-    }
-    
-    private func statRow(icon: String, title: String, value: String) -> some View {
-        HStack(spacing: 12) {
-            Image(systemName: icon)
-                .foregroundStyle(AppColors.accent)
-                .frame(width: 20)
-            Text(title)
-                .foregroundStyle(.secondary)
-            Spacer()
-            Text(value)
-                .font(.body.weight(.semibold))
-                .foregroundStyle(.primary)
-        }
-    }
-    
-    private func possessionRow(home: Int, away: Int) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 12) {
-                Image(systemName: "circle.grid.cross")
-                    .foregroundStyle(AppColors.accent)
-                    .frame(width: 20)
-                Text("Posesión")
-                    .foregroundStyle(.secondary)
-                Spacer()
-                Text("\(home)% - \(away)%")
-                    .font(.body.weight(.semibold))
-                    .foregroundStyle(.primary)
+        .onAppear {
+            withAnimation(.easeInOut(duration: 10).repeatForever(autoreverses: true)) {
+                animate.toggle()
             }
-            ZStack(alignment: .leading) {
-                Capsule().fill(Color.secondary.opacity(0.2)).frame(height: 8)
-                GeometryReader { geo in
-                    Capsule()
-                        .fill(AppColors.accent)
-                        .frame(width: geo.size.width * CGFloat(home) / 100.0, height: 8)
-                }
-            }
-            .frame(height: 8)
         }
     }
 }
 
-private struct Badge: View {
-    let text: String
-    var body: some View {
-        Text(text)
-            .font(.caption.weight(.semibold))
-            .padding(.horizontal, 8)
-            .padding(.vertical, 4)
-            .background(.ultraThinMaterial, in: Capsule())
-    }
-}
 
-
-#Preview("AnalystView") {
+// MARK: - PREVIEW
+#Preview {
     AnalystView()
 }

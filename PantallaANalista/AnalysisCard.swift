@@ -28,3 +28,4 @@ struct AnalysisCard: Identifiable, Equatable, Hashable, Codable {
         self.timestamp = timestamp
     }
 }
+

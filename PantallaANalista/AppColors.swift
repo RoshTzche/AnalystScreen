@@ -1,9 +1,3 @@
-//
-//  AppColors.swift
-//  PantallaANalista
-//
-//  Created by Rosh on 15/10/25.
-//
 
 import SwiftUI
 
@@ -15,7 +9,7 @@ enum AppColors {
     static let background = Color(.systemBackground)
     static let secondaryBackground = Color(.secondarySystemBackground)
 
-    // Burbujas de chat
+    // Burbujas de chat (lo dejamos por si se reutiliza, si no se puede borrar)
     static let bubbleUser = accent.opacity(0.12)
     static let bubbleAssistant = secondaryBackground
 
