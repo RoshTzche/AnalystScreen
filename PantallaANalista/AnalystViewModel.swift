@@ -18,18 +18,19 @@ final class AnalystViewModel: ObservableObject {
     private let service: LLMService
     private var hasStarted = false
 
-    init(service: LLMService = StubLLMService()) {
+    // Por defecto usa GeminiLLMService (con APIKey.default). Puedes inyectar otro LLMService para tests.
+    init(service: LLMService = GeminiLLMService()) {
         self.service = service
     }
 
-    // Arranca la sesión: agrega una tarjeta de bienvenida después de un pequeño delay
+    // Arranca la sesión: agrega una tarjeta de bienvenida
     func startAnalysisSession() async {
         guard !hasStarted else { return }
         hasStarted = true
 
         isThinking = true
         do {
-            let greeting = try await service.generateGreeting(prompt:
+            let greeting = try await service.generateResponse(prompt:
                 """
                 Actúa como un analista amable y profesional. Da la bienvenida al usuario en español con un tono cercano y breve, en máximo 2 líneas.
                 """
@@ -56,18 +57,14 @@ final class AnalystViewModel: ObservableObject {
         guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
         isThinking = true
 
-        // Opcional: podrías insertar una tarjeta "pendiente" mientras se genera la respuesta
-
         do {
-            // Reutilizamos generateGreeting como generador de contenido por ahora
-            let response = try await service.generateGreeting(prompt:
+            let response = try await service.generateResponse(prompt:
                 """
                 Responde en español, breve y claro (máximo 3 líneas), al siguiente input del usuario, con tono profesional y cercano. No saludes:
                 "\(text)"
                 """
             )
 
-            // Para el reverso, podríamos dar una explicación corta o un detalle adicional
             let detail = """
             Detalle adicional:
             • Este contenido se generó a partir de tu mensaje.
