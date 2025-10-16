@@ -8,7 +8,7 @@
 import Foundation
 import GoogleGenerativeAI
 
-// El protocolo no cambia. ¡Esta es la belleza de una buena arquitectura!
+// El protocolo no cambia.
 protocol LLMService {
     func generateResponse(prompt: String) async throws -> String
 }
@@ -20,10 +20,10 @@ final class GeminiLLMService: LLMService {
     private var model: GenerativeModel
 
     init() {
-        // --- IMPORTANTE: Manejo de la Clave de API ---
-        // Pega tu clave de API en el archivo APIKey.swift que crearemos a continuación.
-        // NO escribas la clave directamente aquí para evitar subirla a Git.
-        self.model = GenerativeModel(name: "gemini-1.5-flash-latest", apiKey: APIKey.default)
+        // --- ACTUALIZACIÓN ---
+        // Apuntamos al nuevo y más potente modelo Gemini 2.5 Flash.
+        // ¡Gracias por la información actualizada!
+        self.model = GenerativeModel(name: "gemini-2.5-flash", apiKey: APIKey.default)
     }
     
     // Esta función se comunicará con la API de Gemini.
@@ -60,3 +60,4 @@ struct StubLLMService: LLMService {
         }
     }
 }
+
